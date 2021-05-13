@@ -67,11 +67,13 @@ class BlurActivity : AppCompatActivity() {
         binding.seeFileButton.setOnClickListener {
             viewModel.outputUri?.let { currentUri ->
                 val actionView = Intent(Intent.ACTION_VIEW, currentUri)
+                actionView.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 actionView.resolveActivity(packageManager)?.run {
                     startActivity(actionView)
                 }
             }
         }
+        binding.cancelButton.setOnClickListener { viewModel.cancelWork() }
     }
 
     /**

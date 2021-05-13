@@ -29,6 +29,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class SaveImageToFileWorker(ctx: Context, parameters: WorkerParameters) : Worker(ctx, parameters) {
+    private val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        Images.Media.getContentUri(DIRECTORY_PICTURES) else EXTERNAL_CONTENT_URI
+    private val legacyOrQ: (Bitmap) -> Uri = { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        saveImageInQ(it) else legacySave(it) }
 
     private val title = "Blurred Image"
     private val dateFormatter = SimpleDateFormat(
@@ -48,10 +52,10 @@ class SaveImageToFileWorker(ctx: Context, parameters: WorkerParameters) : Worker
             }
             val bitmap = BitmapFactory.decodeStream(
                 resolver.openInputStream(Uri.parse(resourceUri)))
-            val insertImage = Images.Media.insertImage(resolver, bitmap, title,
-                dateFormatter.format(Date()))
-            if (insertImage.isNullOrEmpty().not()) {
-                val output = workDataOf(KEY_IMAGE_URI to insertImage)
+
+            val uri = legacyOrQ(bitmap)
+            if (uri.toString().isNullOrEmpty().not()) {
+                val output = workDataOf(KEY_IMAGE_URI to uri.toString())
                 Result.success(output)
             } else {
                 Timber.e("Writing to MediaStore failed")
@@ -62,5 +66,47 @@ class SaveImageToFileWorker(ctx: Context, parameters: WorkerParameters) : Worker
             Timber.e(exception.fillInStackTrace())
             Result.failure()
         }
+    }
+
+
+    private fun saveImageInQ(bitmap: Bitmap): Uri {
+        val filename = "${title}_of_${dateFormatter.format(Date())}.png"
+        val fos: OutputStream?
+        val contentValues = ContentValues().apply {
+            put(DISPLAY_NAME, filename)
+            put(MIME_TYPE, "image/png")
+            put(RELATIVE_PATH, DIRECTORY_PICTURES)
+            put(IS_PENDING, 1)
+        }
+
+        //use application context to get contentResolver
+        val contentResolver = applicationContext.contentResolver
+        val uri = contentResolver.insert(collection, contentValues)
+        uri?.let { contentResolver.openOutputStream(it) }.also { fos = it }
+        fos?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        fos?.flush()
+        fos?.close()
+
+        contentValues.clear()
+        contentValues.put(IS_PENDING, 0)
+        uri?.let {
+            contentResolver.update(it, contentValues, null, null)
+        }
+        return uri!!
+    }
+
+    private fun legacySave(bitmap: Bitmap): Uri {
+        val appContext = applicationContext
+        val filename = "${title}_of_${dateFormatter.format(Date())}.png"
+        val directory = getExternalStoragePublicDirectory(DIRECTORY_PICTURES)
+        val file = File(directory, filename)
+        val outStream = FileOutputStream(file)
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream)
+        outStream.flush()
+        outStream.close()
+        MediaScannerConnection.scanFile(appContext, arrayOf(file.absolutePath),
+            null, null)
+        return FileProvider.getUriForFile(appContext, "${appContext.packageName}.provider",
+            file)
     }
 }
