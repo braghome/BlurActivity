@@ -39,12 +39,17 @@ class BlurViewModel(application: Application) : AndroidViewModel(application) {
      * @param blurLevel The amount to blur the image
      */
     internal fun applyBlur(blurLevel: Int) {
+        val constraints = Constraints.Builder()
+                                    .setRequiresCharging(true)
+                                    .setRequiresStorageNotLow(true)
+                                    .build()
         var continuationWorker = workManager.beginUniqueWork(
             IMAGE_MANIPULATION_WORK_NAME,ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequest.from(CleanupWorker::class.java))
         for (i in 0 until blurLevel) {
             val blurBuilder = OneTimeWorkRequestBuilder<BlurWorker>()
             if (i == 0) {
+                blurBuilder.setConstraints(constraints)
                 blurBuilder.setInputData(createInputDataForUri())
             }
             continuationWorker = continuationWorker.then(blurBuilder.build())
