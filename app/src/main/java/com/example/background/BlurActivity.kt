@@ -16,25 +16,45 @@
 
 package com.example.background
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.work.WorkInfo
 import com.bumptech.glide.Glide
 import com.example.background.databinding.ActivityBlurBinding
+import com.example.background.databinding.ActivityBlurBinding.inflate
 
 class BlurActivity : AppCompatActivity() {
 
     private lateinit var viewModel: BlurViewModel
     private lateinit var binding: ActivityBlurBinding
+    private fun workInfosObserver() = Observer<List<WorkInfo>> { listOfWorkInfo ->
+        if (listOfWorkInfo.isNullOrEmpty()) {
+            return@Observer
+        }
+        val workInfo = listOfWorkInfo[0]
+        if (workInfo.state.isFinished) {
+            showWorkFinished()
+            val outputImageUri = workInfo.outputData.getString(KEY_IMAGE_URI)
+            if (outputImageUri.isNullOrEmpty().not()) {
+                viewModel.setOutputUri(outputImageUri as String)
+                binding.seeFileButton.visibility = View.VISIBLE
+            }
+        } else {
+            showWorkInProgress()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityBlurBinding.inflate(layoutInflater)
+        binding = inflate(layoutInflater)
         setContentView(binding.root)
+        viewModel = ViewModelProvider(this).get(BlurViewModel::class.java)
 
-        // Get the ViewModel
-        viewModel = ViewModelProviders.of(this).get(BlurViewModel::class.java)
+        viewModel.outWorkInfos.observe(this, workInfosObserver())
 
         // Image uri should be stored in the ViewModel; put it there then display
         val imageUriExtra = intent.getStringExtra(KEY_IMAGE_URI)
@@ -44,6 +64,14 @@ class BlurActivity : AppCompatActivity() {
         }
 
         binding.goButton.setOnClickListener { viewModel.applyBlur(blurLevel) }
+        binding.seeFileButton.setOnClickListener {
+            viewModel.outputUri?.let { currentUri ->
+                val actionView = Intent(Intent.ACTION_VIEW, currentUri)
+                actionView.resolveActivity(packageManager)?.run {
+                    startActivity(actionView)
+                }
+            }
+        }
     }
 
     /**

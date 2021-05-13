@@ -27,6 +27,9 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.work.WorkInfo
 import com.example.background.databinding.ActivitySelectBinding
 import java.util.Arrays
 import timber.log.Timber
@@ -65,6 +68,7 @@ class SelectImageActivity : AppCompatActivity() {
                     Intent.ACTION_PICK,
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI
             )
+            chooseIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             startActivityForResult(chooseIntent, REQUEST_CODE_IMAGE)
         }
     }
