@@ -16,12 +16,12 @@
   -->
 
 <manifest package="com.example.background"
-          xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
 
     <application
         android:name=".BlurApplication"
@@ -39,19 +39,14 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".BlurActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.PICK"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.OPENABLE"/>
-                <data android:mimeType="image/png"/>
-            </intent-filter>
-        </activity>
+        <activity android:name=".BlurActivity"/>
+        <activity android:name=".legacy.LegacyBlurActivity" />
         <provider
             android:name=".workers.provider.WorkerFileProvider"
             android:authorities="${applicationId}.provider"
             android:exported="false"
             android:grantUriPermissions="true"
+            android:enabled="@bool/atMostKitkat"
             android:permission="android.permission.MANAGE_DOCUMENTS">
             <intent-filter>
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER"/>
@@ -60,7 +55,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"/>
         </provider>
-
+        <activity-alias android:name=".legacy.LegacyBlurActivity"
+            android:targetActivity=".BlurActivity"
+            android:enabled="@bool/atMostJellyBeanMR2">
+            <intent-filter>
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.OPENABLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/png" />
+            </intent-filter>
+        </activity-alias>
     </application>
 
 </manifest>

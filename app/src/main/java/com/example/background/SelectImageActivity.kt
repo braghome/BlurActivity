@@ -24,15 +24,12 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
-import androidx.work.WorkInfo
 import com.example.background.databinding.ActivitySelectBinding
-import java.util.Arrays
 import timber.log.Timber
+import java.util.*
 
 class SelectImageActivity : AppCompatActivity() {
 
@@ -145,9 +142,7 @@ class SelectImageActivity : AppCompatActivity() {
 
     private fun handleImageRequestResult(intent: Intent) {
         // If clipdata is available, we use it, otherwise we use data
-        val imageUri: Uri? = intent.clipData?.let {
-            it.getItemAt(0).uri
-        } ?: intent.data
+        val imageUri: Uri? = intent.clipData?.getItemAt(0)?.uri ?: intent.data
 
         if (imageUri == null) {
             Timber.e("Invalid input image Uri.")
