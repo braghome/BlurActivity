@@ -17,6 +17,7 @@
 package com.example.background
 
 import android.content.Intent
+import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -67,7 +68,7 @@ class BlurActivity : AppCompatActivity() {
         binding.seeFileButton.setOnClickListener {
             viewModel.outputUri?.let { currentUri ->
                 val actionView = Intent(Intent.ACTION_VIEW, currentUri)
-                actionView.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                actionView.addFlags(FLAG_GRANT_READ_URI_PERMISSION)
                 actionView.resolveActivity(packageManager)?.run {
                     startActivity(actionView)
                 }

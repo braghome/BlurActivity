@@ -7,14 +7,9 @@ import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
-import android.os.Environment.DIRECTORY_PICTURES
-import android.os.Environment.getExternalStoragePublicDirectory
-import android.provider.MediaStore
-import android.provider.MediaStore.Images
-import android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-import android.provider.MediaStore.MediaColumns.*
-import android.provider.MediaStore.VOLUME_EXTERNAL
+import android.os.Environment.*
+import android.provider.MediaStore.Downloads.RELATIVE_PATH
+import android.provider.MediaStore.Images.Media.*
 import android.text.TextUtils
 import androidx.core.content.FileProvider
 import androidx.work.Worker
@@ -29,15 +24,13 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class SaveImageToFileWorker(ctx: Context, parameters: WorkerParameters) : Worker(ctx, parameters) {
-    private val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-        Images.Media.getContentUri(DIRECTORY_PICTURES) else EXTERNAL_CONTENT_URI
-    private val legacyOrQ: (Bitmap) -> Uri = { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-        saveImageInQ(it) else legacySave(it) }
 
     private val title = "Blurred Image"
     private val dateFormatter = SimpleDateFormat(
         "yyyy.MM.dd 'at' HH:mm:ss z", Locale.getDefault()
     )
+    private val legacyOrQ: (Bitmap) -> Uri = { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        saveImageInQ(it) else legacySave(it) }
 
     override fun doWork(): Result {
         val appContext = applicationContext
@@ -54,8 +47,9 @@ class SaveImageToFileWorker(ctx: Context, parameters: WorkerParameters) : Worker
                 resolver.openInputStream(Uri.parse(resourceUri)))
 
             val uri = legacyOrQ(bitmap)
-            if (uri.toString().isNullOrEmpty().not()) {
-                val output = workDataOf(KEY_IMAGE_URI to uri.toString())
+            val saveLocation = uri.toString()
+            if (saveLocation.isEmpty().not()) {
+                val output = workDataOf(KEY_IMAGE_URI to saveLocation)
                 Result.success(output)
             } else {
                 Timber.e("Writing to MediaStore failed")
@@ -68,20 +62,19 @@ class SaveImageToFileWorker(ctx: Context, parameters: WorkerParameters) : Worker
         }
     }
 
-
     private fun saveImageInQ(bitmap: Bitmap): Uri {
         val filename = "${title}_of_${dateFormatter.format(Date())}.png"
         val fos: OutputStream?
         val contentValues = ContentValues().apply {
             put(DISPLAY_NAME, filename)
             put(MIME_TYPE, "image/png")
-            put(RELATIVE_PATH, DIRECTORY_PICTURES)
+            put(RELATIVE_PATH, DIRECTORY_DCIM)
             put(IS_PENDING, 1)
         }
 
         //use application context to get contentResolver
         val contentResolver = applicationContext.contentResolver
-        val uri = contentResolver.insert(collection, contentValues)
+        val uri = contentResolver.insert(EXTERNAL_CONTENT_URI, contentValues)
         uri?.let { contentResolver.openOutputStream(it) }.also { fos = it }
         fos?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         fos?.flush()
